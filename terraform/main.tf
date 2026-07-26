@@ -58,6 +58,7 @@ data "aws_iam_policy_document" "rule" {
       "dynamodb:DescribeTable",
       "s3:GetEncryptionConfiguration",
       "config:PutEvaluations",
+      "config:ListDiscoveredResources",
     ]
     resources = ["*"]
   }

@@ -13,6 +13,7 @@ blob the HSM produces.
 """
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -30,6 +31,7 @@ def get_import_parameters(kms, key_id, outdir):
         WrappingAlgorithm=WRAPPING_ALGORITHM,
         WrappingKeySpec=WRAPPING_SPEC,
     )
+    os.makedirs(outdir, exist_ok=True)
     pub = f"{outdir}/wrapping_public_key.bin"
     token = f"{outdir}/import_token.bin"
     with open(pub, "wb") as fh:
@@ -68,11 +70,18 @@ def import_material(kms, key_id, wrapped_path, token_path, expires_days):
     print("imported as pending rotation")
 
 
+def on_demand_rotations(kms, key_id):
+    """Only ON_DEMAND entries count against the per-key budget."""
+    rotations = []
+    paginator = kms.get_paginator("list_key_rotations")
+    for page in paginator.paginate(KeyId=key_id):
+        rotations.extend(page.get("Rotations", []))
+    return [r for r in rotations if r.get("RotationType", "ON_DEMAND") == "ON_DEMAND"]
+
+
 def rotate(kms, key_id):
     status = kms.get_key_rotation_status(KeyId=key_id)
-    remaining = MAX_ON_DEMAND_ROTATIONS - len(
-        kms.list_key_rotations(KeyId=key_id).get("Rotations", [])
-    )
+    remaining = MAX_ON_DEMAND_ROTATIONS - len(on_demand_rotations(kms, key_id))
     if remaining <= 0:
         sys.exit(
             f"key {key_id} has used all {MAX_ON_DEMAND_ROTATIONS} on-demand rotations. "
@@ -90,13 +99,14 @@ def show_status(kms, key_id):
     if key["Origin"] != "EXTERNAL":
         sys.exit(f"key {key_id} has origin {key['Origin']}, this tool is for EXTERNAL keys")
 
-    rotations = kms.list_key_rotations(KeyId=key_id).get("Rotations", [])
+    rotations = on_demand_rotations(kms, key_id)
     print(f"key      {key['Arn']}")
     print(f"state    {key['KeyState']}")
     print(f"expires  {key.get('ValidTo', 'never')}")
     print(f"used     {len(rotations)} of {MAX_ON_DEMAND_ROTATIONS} on-demand rotations")
     if rotations:
-        print(f"last     {rotations[-1]['RotationDate'].isoformat()}")
+        latest = max(r["RotationDate"] for r in rotations)
+        print(f"last     {latest.isoformat()}")
 
 
 def main():
