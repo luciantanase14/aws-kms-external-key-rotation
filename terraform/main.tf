@@ -19,6 +19,12 @@ variable "max_key_age_days" {
   default     = 365
 }
 
+variable "log_retention_days" {
+  description = "Retention for the evaluation function logs. Without this they are kept forever."
+  type        = number
+  default     = 30
+}
+
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)
@@ -90,6 +96,12 @@ resource "aws_lambda_function" "rule" {
       MAX_KEY_AGE_DAYS = var.max_key_age_days
     }
   }
+}
+
+resource "aws_cloudwatch_log_group" "rule" {
+  name              = "/aws/lambda/${aws_lambda_function.rule.function_name}"
+  retention_in_days = var.log_retention_days
+  tags              = var.tags
 }
 
 resource "aws_lambda_permission" "config" {
