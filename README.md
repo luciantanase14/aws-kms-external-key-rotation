@@ -40,11 +40,9 @@ The script never touches plaintext material. It fetches the wrapping public key,
 
 **25 on-demand rotations per key, permanently.** Annual gives 25 years, quarterly about 6. When the budget is spent the only path is a new key, and that is when the table above finally applies. `--status` reports how many remain.
 
-**The import token expires in 24 hours.** The HSM ceremony finishes inside that window or starts again.
+The import token is valid for 24 hours, so the HSM ceremony finishes inside that window or starts again from `GetParametersForImport`.
 
-**Durability is yours.** AWS holds no copy it can restore. If material expires or is deleted the key is dead until the same material is re-imported, so the HSM copy and its backup are part of recovery.
-
-**Multi-Region replicas need the same material imported into each.** They do not inherit it.
+**Durability is yours.** AWS holds no copy it can restore. If material expires or is deleted the key is dead until the same material is re-imported, so the HSM copy and its own backup are part of the recovery plan, not an afterthought. Multi-Region replicas do not inherit material either: the same bytes have to be imported into each one.
 
 ## Detecting drift
 
@@ -54,7 +52,7 @@ It handles both invocation types. Change notifications carry a configuration ite
 
 The tradeoff is ownership: this is code the team maintains, because no managed rule answers the question for imported-material keys.
 
-## Layout
+## Running it
 
 ```
 rotation/     rotate.py
